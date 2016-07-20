@@ -1,5 +1,7 @@
 "use strict";
 import * as vscode from "vscode";
+var dateFormat = require('dateformat');
+var path       = require('path');
 
 let configPrefix: String = "fileHeaderCommentHelper";
 
@@ -23,7 +25,8 @@ export function insertFileHeaderComment() {
         if (projConf.has("projectName") && projConf.get("projectName") !== null) {
             values.projectName = projConf.get("projectName");
         } else {
-            values.projectName = _root.substr(_root.lastIndexOf("/") + 1);
+            var folders        = _root.split(path.sep);
+            values.projectName = folders[folders.length - 1];
         }
 
         values.currentFile = _editor.document.fileName.replace(_root, "").substr(1);
@@ -35,7 +38,16 @@ export function insertFileHeaderComment() {
                 edit.insert(new vscode.Position(0, 0), template
                     .replace("$(projectName)", values.projectName)
                     .replace("$(currentFile)", values.currentFile)
-                    .replace("$(date)", (new Date()).toLocaleString()));
+                    .replace(/\$\(date(\:([^\)]+))?\)/i, ($0, $1, $2) => {
+                        if ($2) {
+                            try {
+                                return dateFormat(new Date(), $2);
+                            }
+                            catch (e) { }
+                        }
+
+                        return dateFormat(new Date(), 'isoDateTime')
+                    }));
             });
             
             vscode.commands.executeCommand("workbench.action.files.save");
